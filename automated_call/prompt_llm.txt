@@ -40,7 +40,7 @@ Categories share commonalities:
 - Category 4 often contains compound words with a common prefix or suffix word
 - A few other common categories include word and letter patterns, pop culture clues (such as music and movie titles) and fill-in-the-blank phrases
 
-You will be given a new example(Example 4) with today’s list of words.First explain your reason for each category and then give your final answer following the structure below (Replace Category1,2,3,4 with their names instead):
+You will be given a new example(Example 4) with today’s list of words. Replace Category1,2,3,4 with their names instead. Do not write more than the categories with the names:
 Groupings:
 Category1: [word1, word2, word3, word4]
 Category2: [word5, word6, word7, word8]

@@ -128,7 +128,8 @@ def run_llama3(game_prompt):
         )
     # Decode generated text
     response_text = tokenizer.decode(output[0], skip_special_tokens=True)
-    return response_text
+    clean_text = response_text.split("Example 4:\n")[1]
+    return clean_text
 
 
 # def run_games(games, filename, play, api_key):
