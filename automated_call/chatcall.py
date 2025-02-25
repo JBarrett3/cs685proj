@@ -17,6 +17,7 @@ import csv
 # import anthropic
 # import google.generativeai as genai
 import pandas as pd
+from tqdm import tqdm
 
 # Add your api keys
 # openai.api_key = ""
@@ -25,9 +26,12 @@ import pandas as pd
 # llama_api_key = ""
 
 # client = boto3.client('bedrock-runtime',region_name="us-east-1")
-model_id = 'meta.llama3-70b-instruct-v1:0'
-tokenizer = AutoTokenizer.from_pretrained(model_id)
-model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto")
+# model_id = 'meta.llama3-70b-instruct-v1:0'
+# This path goes to a better but larger model => "/datasets/ai/llama3/meta-llama/models--meta-llama--Meta-Llama-3.1-70B-Instruct/snapshots/33101ce6ccc08fa6249c10a543ebfcac65173393"
+path_to_model = "/datasets/ai/llama3/meta-llama/models--meta-llama--Llama-3.2-1B-Instruct/snapshots/9213176726f574b556790deb65791e0c5aa438b6/" 
+tokenizer = AutoTokenizer.from_pretrained(path_to_model)
+tokenizer.pad_token = tokenizer.eos_token
+model = AutoModelForCausalLM.from_pretrained(path_to_model, device_map="auto")
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 def open_games(games_file):
@@ -35,8 +39,10 @@ def open_games(games_file):
     """
     games_df = pd.read_csv(games_file)
     # Read answers into 4 lists of 4 words
-    games_df["Words"] = games_df["Words"].apply(split_and_reshape)
-    games_list = games_df["Words"].tolist()
+    # games_df["Words"] = games_df["Words"].apply(split_and_reshape)
+    # games_list = games_df["Words"].tolist()
+    games_df["Input"] = games_df["Input"].apply(split_and_reshape)
+    games_list = games_df["Input"].tolist()
     return games_list
 
 def split_and_reshape(game):
@@ -107,18 +113,26 @@ def run_llama3(game_prompt):
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
     # Generate response
     with torch.no_grad():
+        # output = model.generate(
+        #     **inputs,
+        #     max_length=750,
+        #     temperature=0.6,
+        #     top_p=0.9
+        # )
         output = model.generate(
             **inputs,
-            max_length=750,
+            max_new_tokens=200,
             temperature=0.6,
-            top_p=0.9
+            top_p=0.9,
+            pad_token_id=tokenizer.pad_token_id
         )
     # Decode generated text
     response_text = tokenizer.decode(output[0], skip_special_tokens=True)
     return response_text
 
 
-def run_games(games, filename, play, api_key):
+# def run_games(games, filename, play, api_key):
+def run_games(games, filename, play, maxGames=float('inf')):
     """Run model (based on play function) with prompt.
     New game will be inserted into prompt string.
     """
@@ -126,17 +140,21 @@ def run_games(games, filename, play, api_key):
         # Create a csv.writer object
         writer = csv.writer(file)
         # Exclude demonstration games that appear in prompt (first 3 rows) and run 200 games
-        for n in range(200):
+        for n in tqdm(range(min(len(games), maxGames))):
+        # for n in range(200):
             game_prompt = prompt.replace("InsertGame", games[n])
-            response = play(game_prompt, api_key)
+            # response = play(game_prompt, api_key)
+            response = play(game_prompt)
             response.replace("\n", " ")
             writer.writerow([response])
 
 
 if __name__ == '__main__':
-    games_list = open_games('connectionsRes.csv')
-    prompt = open_prompt("prompt.txt")
+    # games_list = open_games('connectionsRes.csv')
+    games_list = open_games('scoring/scripts/beginner.csv')
+    # prompt = open_prompt("prompt.txt")
+    prompt = open_prompt("automated_call/prompt_llm.txt")
     # run_games(games_list, "chatgpt_responses.csv", run_chatgpt, openai.api_key)
     # run_games(games_list, "claude3_responses.csv", run_claude, claude_api_key)
     # you need AWS api key to run this
-    run_games(games_list, "llama3_responses.csv", run_llama3)
+    run_games(games_list, "llama3_responses.csv", run_llama3, maxGames=2)
